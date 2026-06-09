@@ -14,7 +14,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from aion_redteam.core.scenario import InjectionPoint
+from aion_redteam.core.scenario import InjectionPoint, Setup
 
 
 class ToolCall(BaseModel):
@@ -68,10 +68,23 @@ class Target(ABC):
     Lifecycle, driven by the runner once per repetition:
 
     1. :meth:`reset` — restore clean state.
-    2. :meth:`inject` — stage the attack payload at its injection point.
-    3. :meth:`execute` — run the agent on the legitimate input.
-    4. :meth:`get_response` — return what the agent did.
+    2. :meth:`configure` — apply the scenario's legitimate setup (system prompt, tools).
+    3. :meth:`inject` — stage the attack payload at its injection point.
+    4. :meth:`execute` — run the agent on the legitimate input.
+    5. :meth:`get_response` — return what the agent did.
     """
+
+    async def configure(self, setup: Setup) -> None:
+        """Apply the scenario's legitimate setup before any attack is staged.
+
+        Adapters may use ``setup.system_prompt`` and ``setup.tools_available`` to
+        shape the agent's environment. The default is a no-op so adapters that do
+        not support reconfiguration still satisfy the interface.
+
+        Args:
+            setup: The scenario's legitimate (pre-attack) configuration.
+        """
+        return None
 
     @abstractmethod
     async def load(self, config: dict[str, Any]) -> None:

@@ -91,6 +91,7 @@ class Runner:
         started = time.perf_counter()
         try:
             await self.target.reset()
+            await self.target.configure(scenario.setup)
             await self.target.inject(
                 scenario.attack.payload, scenario.attack.injection_point
             )
