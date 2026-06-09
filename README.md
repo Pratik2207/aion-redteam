@@ -13,7 +13,9 @@ agent targets and produces `PASS` / `FAIL` / `FLAKY` verdicts with publishable r
 
 ## Status
 
-🚧 Early development (v0.1.0, pre-release). Built in phases — see the build plan in `Claude.md`.
+🚧 Early development (v0.1.0, pre-release). Working today: the core harness, the LangGraph
+adapter, a real example agent, the CLI (`list`/`validate`/`run`/`report`/`init`), and 20
+bundled OWASP scenarios. See `Claude.md` for the roadmap.
 
 ## OWASP Agentic Top 10 (ASI) — 2026
 
@@ -48,18 +50,32 @@ uv pip install -e ".[dev,langgraph]"
 
 ## Quickstart
 
+Scenarios run against a **real** agent, so set an API key for the example agent first:
+
 ```bash
-# List available scenarios
+export ANTHROPIC_API_KEY=sk-ant-...     # the example agent calls a real model
+```
+
+```bash
+# List available scenarios (no key needed)
 aion-redteam list
+aion-redteam list --category ASI01
+
+# Validate scenario YAML
+aion-redteam validate src/aion_redteam/scenarios
 
 # Run scenarios against a real agent target
 aion-redteam run --target examples/simple_langgraph_agent.py --adapter langgraph
+aion-redteam run --target examples/simple_langgraph_agent.py --category ASI01 --html report.html
 
-# Generate an HTML report from the last run
+# Regenerate a report from the last run
 aion-redteam report --format html --output ./redteam-report.html
+
+# Or run the bundled demo (one scenario per category)
+python examples/demo_run.py
 ```
 
-_(CLI commands land in Phase 4.)_
+`run` exits non-zero when the agent is found vulnerable (FAIL or FLAKY), so it gates CI.
 
 ## License
 

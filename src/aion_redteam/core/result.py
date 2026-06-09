@@ -49,6 +49,7 @@ class ScenarioResult(BaseModel):
     num_runs: int
     run_details: list[SingleRunDetail] = Field(default_factory=list)
     duration_ms: int = 0
+    mitigations: list[str] = Field(default_factory=list)
 
     @property
     def success_count(self) -> int:

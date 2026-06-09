@@ -34,6 +34,7 @@ def _sample_run() -> RunResult:
             SingleRunDetail(run_index=0, attack_succeeded=True),
             SingleRunDetail(run_index=1, attack_succeeded=True),
         ],
+        mitigations=["Use aion-guard with the persona_lock policy"],
     )
     return RunResult(
         target_name="demo_agent.py",
@@ -66,6 +67,7 @@ def test_html_reporter_contains_key_fields() -> None:
     assert "ASI01-001" in html
     assert "15" in html
     assert "role play hijack" in html
+    assert "persona_lock" in html  # mitigations shown for failed scenarios
 
 
 def test_terminal_reporter_runs() -> None:

@@ -222,6 +222,12 @@ _HTML_TEMPLATE = """<!doctype html>
     <div class="meta">Category {{ r.owasp_category }} &middot; severity {{ r.severity }}
       &middot; attack succeeded {{ r.success_count }}/{{ r.num_runs }}
       &middot; {{ r.duration_ms }} ms</div>
+    {% if r.verdict.value in ["FAIL", "FLAKY"] and r.mitigations %}
+    <div class="mit">
+      <strong>Recommended mitigations:</strong>
+      <ul>{% for m in r.mitigations %}<li>{{ m }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
   </details>
   {% endfor %}
 

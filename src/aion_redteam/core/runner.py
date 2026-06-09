@@ -84,6 +84,7 @@ class Runner:
             num_runs=scenario.execution.num_runs,
             run_details=details,
             duration_ms=duration_ms,
+            mitigations=scenario.mitigations,
         )
 
     async def _run_once(self, scenario: Scenario, run_index: int) -> SingleRunDetail:
