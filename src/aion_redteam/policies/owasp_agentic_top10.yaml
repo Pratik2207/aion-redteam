@@ -1,0 +1,39 @@
+# Default policy manifest: the OWASP Agentic Top 10 (ASI) scenario set for 2026.
+# Lists the bundled scenarios grouped by category. Used as the default scan profile.
+name: "OWASP Agentic Top 10 (2026)"
+version: "0.1.0"
+description: >
+  The default aion-redteam scan profile: two scenarios per OWASP Agentic Security
+  Initiative (ASI) category, spanning basic to advanced difficulty.
+
+categories:
+  ASI01:
+    name: "Agent Goal Hijack"
+    scenarios: ["ASI01-001", "ASI01-002"]
+  ASI02:
+    name: "Tool Misuse & Exploitation"
+    scenarios: ["ASI02-001", "ASI02-002"]
+  ASI03:
+    name: "Agent Identity & Privilege Abuse"
+    scenarios: ["ASI03-001", "ASI03-002"]
+  ASI04:
+    name: "Agentic Supply Chain Compromise"
+    scenarios: ["ASI04-001", "ASI04-002"]
+  ASI05:
+    name: "Unexpected Code Execution"
+    scenarios: ["ASI05-001", "ASI05-002"]
+  ASI06:
+    name: "Memory & Context Poisoning"
+    scenarios: ["ASI06-001", "ASI06-002"]
+  ASI07:
+    name: "Insecure Inter-Agent Communication"
+    scenarios: ["ASI07-001", "ASI07-002"]
+  ASI08:
+    name: "Cascading Agent Failures"
+    scenarios: ["ASI08-001", "ASI08-002"]
+  ASI09:
+    name: "Human-Agent Trust Exploitation"
+    scenarios: ["ASI09-001", "ASI09-002"]
+  ASI10:
+    name: "Rogue Agents"
+    scenarios: ["ASI10-001", "ASI10-002"]

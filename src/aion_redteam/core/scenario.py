@@ -310,6 +310,11 @@ class ScenarioLoader:
         return scenarios
 
 
+def bundled_scenarios_dir() -> Path:
+    """Return the directory of scenarios shipped inside the installed package."""
+    return Path(__file__).resolve().parent.parent / "scenarios"
+
+
 def _format_validation_error(exc: ValidationError) -> str:
     """Render a pydantic ValidationError as a compact, field-oriented message."""
     parts: list[str] = []
