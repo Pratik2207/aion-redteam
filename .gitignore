@@ -25,10 +25,12 @@ coverage.xml
 # uv
 uv.lock
 
-# Reports produced by runs
+# Reports / state produced by runs
 redteam-report.html
 results.json
 *.redteam-report.html
+*-report.html
+.aion_redteam/
 
 # Secrets / env
 .env

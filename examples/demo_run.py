@@ -13,6 +13,7 @@ It runs one scenario per OWASP category (fast) and writes an HTML report.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import sys
 from pathlib import Path
@@ -26,6 +27,11 @@ EXAMPLE_AGENT = HERE / "simple_langgraph_agent.py"
 
 
 async def main() -> int:
+    # Force UTF-8 console output so verdict icons don't crash on legacy Windows code pages.
+    for stream in (sys.stdout, sys.stderr):
+        with contextlib.suppress(AttributeError, ValueError):
+            stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+
     if not os.environ.get("ANTHROPIC_API_KEY"):
         print("Set ANTHROPIC_API_KEY to run the demo against the real agent.")
         return 1

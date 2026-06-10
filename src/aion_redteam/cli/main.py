@@ -11,6 +11,8 @@ Commands:
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import sys
 from pathlib import Path
 
 import typer
@@ -31,6 +33,21 @@ from aion_redteam.core.scenario import (
     bundled_scenarios_dir,
 )
 from aion_redteam.core.target import TargetError
+
+
+def _force_utf8_streams() -> None:
+    """Force UTF-8 console output with a safe fallback.
+
+    Verdict icons and box-drawing characters are non-ASCII; legacy Windows code
+    pages (e.g. cp1252) raise UnicodeEncodeError on them. This keeps the CLI from
+    crashing while printing a report.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        with contextlib.suppress(AttributeError, ValueError):
+            stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+
+
+_force_utf8_streams()
 
 app = typer.Typer(
     name="aion-redteam",

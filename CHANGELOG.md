@@ -12,7 +12,13 @@ All notable changes to this project are documented here. The format is based on
   verdicts with a severity-weighted 0–100 risk score), and terminal/JSON/HTML reporters.
 - LangGraph adapter (`LangGraphTarget`) with graph discovery and per-injection-point
   message encoding.
-- A real Anthropic-backed example LangGraph agent and a quick-start demo script.
+- Real example LangGraph agents (Anthropic-backed and a no-key local Ollama target) and
+  a quick-start demo script.
+- `ollama` optional extra (`langchain-ollama`) for the local example.
+
+### Fixed
+- CLI/demo force UTF-8 console output so verdict icons no longer crash on legacy Windows
+  code pages (cp1252).
 - CLI (`aion-redteam`): `list`, `validate`, `run`, `report`, `init`.
 - Bundled scenario library: 20 scenarios spanning all 10 OWASP Agentic (ASI) categories,
   plus the `owasp_agentic_top10` policy manifest.

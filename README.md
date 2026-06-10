@@ -77,6 +77,43 @@ python examples/demo_run.py
 
 `run` exits non-zero when the agent is found vulnerable (FAIL or FLAKY), so it gates CI.
 
+## Testing your own agent
+
+aion-redteam is **not tied to any LLM provider.** The harness never calls a model itself —
+it invokes *your* compiled LangGraph graph, and whatever model your graph uses (OpenAI,
+Anthropic, Gemini, or a **local Ollama** model) is what gets red-teamed. The only
+credentials you need are the ones your agent already needs to run; a local Ollama agent
+needs **no API key at all**.
+
+Three steps:
+
+1. **Expose a compiled graph.** In your agent file, make the compiled `StateGraph`
+   available as a module-level variable named `graph` (also accepted: `app`, `agent`,
+   `workflow`, or a `build_graph()` factory). Use the `MessagesState` convention.
+2. **Install aion-redteam into the same environment** as your agent (so its imports
+   resolve): `uv pip install -e ".[langgraph]"` (plus your agent's own deps).
+3. **Run it:**
+   ```bash
+   aion-redteam run --target path/to/your_agent.py --adapter langgraph --html report.html
+   ```
+   If your compiled graph has a non-standard name, pass `--attribute my_graph`.
+
+### Local Ollama example
+
+A complete, no-key, fully local target lives at
+[`examples/ollama_langgraph_agent.py`](examples/ollama_langgraph_agent.py) (uses
+`langchain-ollama` + `ChatOllama`):
+
+```bash
+uv pip install -e ".[langgraph,ollama]"
+ollama pull llama3.2
+aion-redteam run --target examples/ollama_langgraph_agent.py --adapter langgraph --category ASI01
+```
+
+> **Windows note:** if you hit an `OPENSSL_Uplink ... no OPENSSL_Applink` crash, a
+> standalone Python on your PATH is colliding with another OpenSSL DLL. Build the venv on
+> a system/Anaconda Python instead: `uv venv aion-redteam --python C:\path\to\python.exe`.
+
 ## License
 
 MIT — the offensive tool stays free forever. See [LICENSE](LICENSE).
