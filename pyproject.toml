@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aion-redteam"
-version = "0.1.0"
+dynamic = ["version"]
 description = "OWASP-aligned adversarial red-team harness for LangGraph, CrewAI, and MCP agents."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -59,6 +59,10 @@ Issues = "https://github.com/Cypharia/aion-redteam/issues"
 
 [project.scripts]
 aion-redteam = "aion_redteam.cli.main:app"
+
+[tool.hatch.version]
+# Single source of truth for the version: src/aion_redteam/__init__.py __version__.
+path = "src/aion_redteam/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 # scenarios/ and policies/ live inside the package, so their YAML data ships
