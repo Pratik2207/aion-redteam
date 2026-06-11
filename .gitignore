@@ -43,5 +43,13 @@ results.json
 .DS_Store
 Thumbs.db
 
+# Local-only build spec / strategy notes — not for the public repo
+Claude.md
+claude.md
+CLAUDE.md
+
+# Reference material (large binaries, redistribution)
+*.pdf
+
 # Local notes (keep the spec, ignore scratch)
 scratch/

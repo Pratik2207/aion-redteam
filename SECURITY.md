@@ -8,6 +8,18 @@ of AI agents you own or are explicitly permitted to test. It ships adversarial p
 your own agents or in engagements where you have written authorization. Do not use it to
 attack systems you do not control.
 
+## Trust model (important)
+
+- **Running a target executes its code.** To test an agent, aion-redteam imports the
+  `--target` Python file, which runs its module-level code. Only point aion-redteam at
+  agent files **you trust**. Treat `--target` like `python that_file.py`.
+- **Scenarios are executable test data.** Scenario YAML carries regex patterns that the
+  harness compiles and runs. Only load scenarios from sources you trust; review
+  community-contributed scenarios (especially their `regex` criteria) before running
+  them. Judge input is length-capped and evaluation is time-bounded to limit the impact
+  of pathological (ReDoS-prone) patterns, but review is still the first line of defense.
+- **aion-redteam makes no network calls of its own** — only the agent under test does.
+
 ## Reporting a vulnerability
 
 If you find a security vulnerability **in aion-redteam itself** (for example, a scenario

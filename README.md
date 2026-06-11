@@ -15,7 +15,7 @@ agent targets and produces `PASS` / `FAIL` / `FLAKY` verdicts with publishable r
 
 🚧 Early development (v0.1.0, pre-release). Working today: the core harness, the LangGraph
 adapter, a real example agent, the CLI (`list`/`validate`/`run`/`report`/`init`), and 20
-bundled OWASP scenarios. See `Claude.md` for the roadmap.
+bundled OWASP scenarios. See [CHANGELOG.md](CHANGELOG.md) for what's landed.
 
 ## OWASP Agentic Top 10 (ASI) — 2026
 

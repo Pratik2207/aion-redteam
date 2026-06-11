@@ -19,6 +19,13 @@ All notable changes to this project are documented here. The format is based on
 ### Fixed
 - CLI/demo force UTF-8 console output so verdict icons no longer crash on legacy Windows
   code pages (cp1252).
+
+### Security
+- Judge evaluation now runs untrusted (community-contributed) regex with a capped input
+  length and under the scenario timeout, bounding ReDoS-style hangs.
+- Target loading appends (rather than prepends) the target directory to `sys.path` so a
+  target cannot shadow stdlib/installed packages; documented the load/scenario trust
+  model in `SECURITY.md`.
 - CLI (`aion-redteam`): `list`, `validate`, `run`, `report`, `init`.
 - Bundled scenario library: 20 scenarios spanning all 10 OWASP Agentic (ASI) categories,
   plus the `owasp_agentic_top10` policy manifest.

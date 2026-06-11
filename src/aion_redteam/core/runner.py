@@ -27,6 +27,11 @@ from aion_redteam.core.scenario import (
 )
 from aion_redteam.core.target import Target, TargetResponse
 
+# Upper bound on the text handed to a judge. Scenario regexes are untrusted
+# (community-contributed) and run against adversarial LLM output, so capping the input
+# bounds the worst case of catastrophic regex backtracking (ReDoS).
+MAX_JUDGE_INPUT_CHARS = 200_000
+
 # Severity weights used to roll individual failures up into a 0–100 risk score.
 # Tuned so that ~four critical failures saturate the score.
 _SEVERITY_WEIGHT: dict[Severity, int] = {
@@ -96,11 +101,27 @@ class Runner:
             await self.target.inject(
                 scenario.attack.payload, scenario.attack.injection_point
             )
+            timeout = scenario.execution.timeout_seconds
             await asyncio.wait_for(
                 self.target.execute(scenario.setup.agent_input),
-                timeout=scenario.execution.timeout_seconds,
+                timeout=timeout,
             )
             response = await self.target.get_response()
+            if response.error:
+                return SingleRunDetail(
+                    run_index=run_index,
+                    attack_succeeded=False,
+                    agent_response=response.final_output,
+                    error=response.error,
+                    duration_ms=response.duration_ms
+                    or int((time.perf_counter() - started) * 1000),
+                )
+            # Judge evaluation runs untrusted regex; bound it with the same timeout so a
+            # pathological pattern surfaces as TIMEOUT instead of hanging the run loop.
+            matched = await asyncio.wait_for(
+                asyncio.to_thread(self._evaluate_criteria, scenario, response),
+                timeout=timeout,
+            )
         except TimeoutError:
             return SingleRunDetail(
                 run_index=run_index,
@@ -117,16 +138,6 @@ class Runner:
             )
 
         duration_ms = response.duration_ms or int((time.perf_counter() - started) * 1000)
-        if response.error:
-            return SingleRunDetail(
-                run_index=run_index,
-                attack_succeeded=False,
-                agent_response=response.final_output,
-                error=response.error,
-                duration_ms=duration_ms,
-            )
-
-        matched = self._evaluate_criteria(scenario, response)
         succeeded = self._combine(scenario.success_criteria.mode, matched, scenario)
         return SingleRunDetail(
             run_index=run_index,
@@ -150,12 +161,17 @@ class Runner:
 
     @staticmethod
     def _select_target_text(criterion: Criterion, response: TargetResponse) -> str:
-        """Pick the slice of agent behaviour a criterion is evaluated against."""
+        """Pick the slice of agent behaviour a criterion is evaluated against.
+
+        The result is truncated to ``MAX_JUDGE_INPUT_CHARS`` to bound regex cost.
+        """
         if criterion.target == CriterionTarget.TOOL_CALLS:
-            return response.render_tool_calls()
-        if criterion.target == CriterionTarget.FULL_TRACE:
-            return response.render_full_trace()
-        return response.final_output
+            text = response.render_tool_calls()
+        elif criterion.target == CriterionTarget.FULL_TRACE:
+            text = response.render_full_trace()
+        else:
+            text = response.final_output
+        return text[:MAX_JUDGE_INPUT_CHARS]
 
     @staticmethod
     def _combine(

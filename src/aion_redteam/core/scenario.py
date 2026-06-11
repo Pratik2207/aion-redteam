@@ -4,7 +4,7 @@ A *scenario* is a single, self-contained adversarial test: a legitimate setup, a
 attack payload injected at a defined point, and unambiguous success criteria. Scenarios
 are **data, not code** — every attack ships as a YAML file validated against these models.
 
-The schema here is the contract documented in ``Claude.md`` and ``docs/scenario_authoring.md``.
+The schema here is the contract documented in ``docs/scenario_authoring.md``.
 """
 
 from __future__ import annotations

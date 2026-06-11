@@ -163,13 +163,19 @@ class LangGraphTarget(Target):
 
     @staticmethod
     def _import_module(path: Path) -> Any:
-        """Import a Python module from a file path, making sibling imports resolvable."""
+        """Import a Python module from a file path, making sibling imports resolvable.
+
+        Security note: this executes the target file's module-level code (loading an
+        agent requires running it). Only point aion-redteam at agent files you trust.
+        The target's directory is *appended* to ``sys.path`` (not prepended) so it cannot
+        shadow stdlib or installed packages.
+        """
         path = path.resolve()
         if not path.is_file():
             raise TargetError(f"target file not found: {path}")
         parent = str(path.parent)
         if parent not in sys.path:
-            sys.path.insert(0, parent)
+            sys.path.append(parent)
         module_name = f"_aion_target_{path.stem}"
         spec = importlib.util.spec_from_file_location(module_name, path)
         if spec is None or spec.loader is None:

@@ -170,6 +170,38 @@ async def test_combine_mode_all() -> None:
 
 
 @pytest.mark.asyncio
+async def test_judge_input_is_length_capped() -> None:
+    from aion_redteam.core.runner import MAX_JUDGE_INPUT_CHARS, Runner
+    from aion_redteam.core.scenario import Criterion, CriterionType
+    from aion_redteam.core.target import TargetResponse
+
+    huge = "x" * (MAX_JUDGE_INPUT_CHARS + 5000)
+    crit = Criterion(type=CriterionType.STRING_MATCH, value="x")
+    text = Runner._select_target_text(crit, TargetResponse(final_output=huge))
+    assert len(text) == MAX_JUDGE_INPUT_CHARS
+
+
+@pytest.mark.asyncio
+async def test_slow_judging_is_bounded_by_timeout(monkeypatch) -> None:
+    # Judge evaluation runs untrusted regex; a slow/pathological one must surface as
+    # TIMEOUT within the scenario budget rather than hanging the run loop. We simulate a
+    # slow judge with an interruptible sleep (a real ReDoS thread can't be killed and
+    # would hang the suite, so we don't induce one here).
+    import time as _time
+
+    def _slow_eval(self, scenario, response):  # noqa: ANN001
+        _time.sleep(2.0)
+        return []
+
+    monkeypatch.setattr(Runner, "_evaluate_criteria", _slow_eval)
+    scenario = make_scenario(num_runs=1)
+    scenario.execution.timeout_seconds = 0.3
+    target = ScriptedTarget(lambda i: TargetResponse(final_output="safe"))
+    result = await _run(target, scenario)
+    assert result.scenario_results[0].verdict is Verdict.TIMEOUT
+
+
+@pytest.mark.asyncio
 async def test_tool_calls_target_is_searched() -> None:
     from aion_redteam.core.target import ToolCall
 
