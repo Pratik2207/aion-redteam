@@ -179,6 +179,13 @@ def run(
     attribute: str | None = typer.Option(
         None, "--attribute", help="Name of the compiled graph/agent in the target file."
     ),
+    timeout: float | None = typer.Option(
+        None, "--timeout", help="Override per-scenario timeout in seconds "
+        "(useful for slow tool-using agents on local models).",
+    ),
+    num_runs: int | None = typer.Option(
+        None, "--num-runs", help="Override the repetitions per scenario.",
+    ),
     html_out: Path | None = typer.Option(
         None, "--html", help="Also write an HTML report to this path."
     ),
@@ -202,7 +209,9 @@ def run(
         raise typer.Exit(code=1)
 
     try:
-        result = asyncio.run(_execute(target, adapter, attribute, selected))
+        result = asyncio.run(
+            _execute(target, adapter, attribute, selected, timeout, num_runs)
+        )
     except TargetError as exc:
         err_console.print(f"[red]Target error[/red] {exc}")
         raise typer.Exit(code=2) from exc
@@ -276,7 +285,12 @@ def init(
 
 
 async def _execute(
-    target: Path, adapter: str, attribute: str | None, scenarios: list[Scenario]
+    target: Path,
+    adapter: str,
+    attribute: str | None,
+    scenarios: list[Scenario],
+    timeout: float | None = None,
+    num_runs: int | None = None,
 ) -> RunResult:
     """Load the adapter + target and run the selected scenarios."""
     tgt = get_adapter(adapter)
@@ -284,7 +298,10 @@ async def _execute(
     if attribute:
         config["attribute"] = attribute
     await tgt.load(config)
-    return await Runner(tgt, scenarios).run(target_name=target.name, adapter=adapter)
+    runner = Runner(
+        tgt, scenarios, timeout_override=timeout, num_runs_override=num_runs
+    )
+    return await runner.run(target_name=target.name, adapter=adapter)
 
 
 def _save_json(result: RunResult, path: Path, announce: bool) -> None:

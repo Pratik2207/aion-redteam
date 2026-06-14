@@ -36,6 +36,13 @@ def test_validate_bundled(tmp_path) -> None:
     assert "valid" in result.stdout
 
 
+def test_run_help_exposes_overrides() -> None:
+    result = runner.invoke(app, ["run", "--help"])
+    assert result.exit_code == 0
+    assert "--timeout" in result.stdout
+    assert "--num-runs" in result.stdout
+
+
 def test_run_rejects_unknown_adapter(tmp_path) -> None:
     fake = tmp_path / "agent.py"
     fake.write_text("graph = None\n", encoding="utf-8")

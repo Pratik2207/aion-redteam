@@ -202,6 +202,45 @@ async def test_slow_judging_is_bounded_by_timeout(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_num_runs_override() -> None:
+    target = ScriptedTarget(lambda i: TargetResponse(final_output="safe"))
+    scenario = make_scenario(num_runs=5)
+    result = await Runner(target, [scenario], num_runs_override=2).run("a", "test")
+    sr = result.scenario_results[0]
+    assert sr.num_runs == 2
+    assert len(sr.run_details) == 2
+
+
+@pytest.mark.asyncio
+async def test_timeout_override_applies() -> None:
+    # scenario default would be 1s; override to a tiny value and hang -> TIMEOUT fast
+    target = ScriptedTarget(lambda i: TargetResponse(), hang=True)
+    scenario = make_scenario(num_runs=1)
+    scenario.execution.timeout_seconds = 999
+    result = await Runner(target, [scenario], timeout_override=0.3).run("a", "test")
+    assert result.scenario_results[0].verdict is Verdict.TIMEOUT
+
+
+@pytest.mark.asyncio
+async def test_tool_call_check_end_to_end() -> None:
+    from aion_redteam.core.target import ToolCall
+
+    scenario = make_scenario(num_runs=1)
+    scenario.success_criteria.criteria = [
+        Criterion(type=CriterionType.TOOL_CALL_CHECK, value="send_email",
+                  arguments={"to": "evil.com"})
+    ]
+    target = ScriptedTarget(
+        lambda i: TargetResponse(
+            final_output="done",
+            tool_calls=[ToolCall(name="send_email", arguments={"to": "a@evil.com"})],
+        )
+    )
+    result = await _run(target, scenario)
+    assert result.scenario_results[0].verdict is Verdict.FAIL
+
+
+@pytest.mark.asyncio
 async def test_tool_calls_target_is_searched() -> None:
     from aion_redteam.core.target import ToolCall
 

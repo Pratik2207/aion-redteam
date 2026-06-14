@@ -59,16 +59,54 @@ class TestRegexJudge:
             judge.evaluate("x", crit)
 
 
-class TestStubs:
+class TestLLMJudgeStub:
     def test_llm_judge_not_implemented(self) -> None:
         crit = Criterion(type=CriterionType.LLM_JUDGE, prompt="did it leak?")
         with pytest.raises(NotImplementedError, match="v0.2"):
             LLMJudge().evaluate("anything", crit)
 
-    def test_tool_call_judge_not_implemented(self) -> None:
+
+class TestToolCallJudge:
+    CALLS = '[{"name": "send_email", "arguments": {"to": "x@evil.com", "body": "hi"}}]'
+
+    def test_matches_tool_by_name(self) -> None:
         crit = Criterion(type=CriterionType.TOOL_CALL_CHECK, value="send_email")
-        with pytest.raises(NotImplementedError):
-            ToolCallJudge().evaluate("anything", crit)
+        assert ToolCallJudge().evaluate(self.CALLS, crit) is True
+
+    def test_no_match_when_tool_absent(self) -> None:
+        crit = Criterion(type=CriterionType.TOOL_CALL_CHECK, value="delete_file")
+        assert ToolCallJudge().evaluate(self.CALLS, crit) is False
+
+    def test_argument_substring_match(self) -> None:
+        crit = Criterion(
+            type=CriterionType.TOOL_CALL_CHECK,
+            value="send_email",
+            arguments={"to": "evil.com"},
+        )
+        assert ToolCallJudge().evaluate(self.CALLS, crit) is True
+
+    def test_argument_mismatch_fails(self) -> None:
+        crit = Criterion(
+            type=CriterionType.TOOL_CALL_CHECK,
+            value="send_email",
+            arguments={"to": "trusted.com"},
+        )
+        assert ToolCallJudge().evaluate(self.CALLS, crit) is False
+
+    def test_name_case_insensitive_by_default(self) -> None:
+        crit = Criterion(type=CriterionType.TOOL_CALL_CHECK, value="SEND_EMAIL")
+        assert ToolCallJudge().evaluate(self.CALLS, crit) is True
+
+    def test_case_sensitive_respected(self) -> None:
+        crit = Criterion(
+            type=CriterionType.TOOL_CALL_CHECK, value="SEND_EMAIL", case_sensitive=True
+        )
+        assert ToolCallJudge().evaluate(self.CALLS, crit) is False
+
+    def test_empty_and_invalid_json(self) -> None:
+        crit = Criterion(type=CriterionType.TOOL_CALL_CHECK, value="send_email")
+        assert ToolCallJudge().evaluate("", crit) is False
+        assert ToolCallJudge().evaluate("not json", crit) is False
 
 
 class TestGetJudge:

@@ -22,6 +22,7 @@ from aion_redteam.core.scenario import (
     CombineMode,
     Criterion,
     CriterionTarget,
+    CriterionType,
     Scenario,
     Severity,
 )
@@ -45,15 +46,35 @@ _SEVERITY_WEIGHT: dict[Severity, int] = {
 class Runner:
     """Runs a set of scenarios against a single :class:`Target`."""
 
-    def __init__(self, target: Target, scenarios: list[Scenario]) -> None:
+    def __init__(
+        self,
+        target: Target,
+        scenarios: list[Scenario],
+        *,
+        timeout_override: float | None = None,
+        num_runs_override: int | None = None,
+    ) -> None:
         """Initialize the runner.
 
         Args:
             target: A loaded target wrapping the real agent under test.
             scenarios: Validated scenarios to execute.
+            timeout_override: If set, overrides each scenario's ``timeout_seconds``
+                (useful for slow, multi-step tool-using agents on local models).
+            num_runs_override: If set, overrides each scenario's ``num_runs``.
         """
         self.target = target
         self.scenarios = scenarios
+        self.timeout_override = timeout_override
+        self.num_runs_override = num_runs_override
+
+    def _timeout(self, scenario: Scenario) -> float:
+        """Effective per-run timeout for a scenario (override wins)."""
+        return self.timeout_override or scenario.execution.timeout_seconds
+
+    def _num_runs(self, scenario: Scenario) -> int:
+        """Effective repetition count for a scenario (override wins)."""
+        return self.num_runs_override or scenario.execution.num_runs
 
     async def run(
         self, target_name: str = "agent", adapter: str = "unknown"
@@ -74,7 +95,7 @@ class Runner:
         """Run one scenario for all of its repetitions and classify the verdict."""
         started = time.perf_counter()
         details: list[SingleRunDetail] = [
-            await self._run_once(scenario, i) for i in range(scenario.execution.num_runs)
+            await self._run_once(scenario, i) for i in range(self._num_runs(scenario))
         ]
         duration_ms = int((time.perf_counter() - started) * 1000)
 
@@ -86,7 +107,7 @@ class Runner:
             severity=scenario.severity,
             verdict=verdict,
             success_rate=success_rate,
-            num_runs=scenario.execution.num_runs,
+            num_runs=self._num_runs(scenario),
             run_details=details,
             duration_ms=duration_ms,
             mitigations=scenario.mitigations,
@@ -101,7 +122,7 @@ class Runner:
             await self.target.inject(
                 scenario.attack.payload, scenario.attack.injection_point
             )
-            timeout = scenario.execution.timeout_seconds
+            timeout = self._timeout(scenario)
             await asyncio.wait_for(
                 self.target.execute(scenario.setup.agent_input),
                 timeout=timeout,
@@ -165,7 +186,10 @@ class Runner:
 
         The result is truncated to ``MAX_JUDGE_INPUT_CHARS`` to bound regex cost.
         """
-        if criterion.target == CriterionTarget.TOOL_CALLS:
+        if criterion.type == CriterionType.TOOL_CALL_CHECK:
+            # ToolCallJudge needs structured data, not the human-readable rendering.
+            text = response.tool_calls_as_json()
+        elif criterion.target == CriterionTarget.TOOL_CALLS:
             text = response.render_tool_calls()
         elif criterion.target == CriterionTarget.FULL_TRACE:
             text = response.render_full_trace()

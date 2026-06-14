@@ -7,6 +7,15 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- `ToolCallJudge` (`tool_call_check` criteria) — assert that an agent invoked a specific
+  tool, optionally with given argument substrings. Tool calls are serialized to JSON for
+  structured matching. Makes tool-using agents properly testable.
+- CLI `--timeout` and `--num-runs` flags on `run` to override per-scenario execution
+  budgets — needed for slow, multi-step tool-using agents on local models.
+
+## [0.1.0] - 2026-06-11
+
+### Added
 - Core layer: scenario schema + `ScenarioLoader`, `StringMatch`/`Regex` judges, the
   `Target` lifecycle abstraction, the async `Runner` (PASS/FAIL/FLAKY/ERROR/TIMEOUT
   verdicts with a severity-weighted 0–100 risk score), and terminal/JSON/HTML reporters.

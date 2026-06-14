@@ -9,6 +9,7 @@ of individual components, never on this path.
 
 from __future__ import annotations
 
+import json
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -52,6 +53,16 @@ class TargetResponse(BaseModel):
     def render_full_trace(self) -> str:
         """Join the full execution trace into a single searchable string."""
         return "\n".join(self.full_trace)
+
+    def tool_calls_as_json(self) -> str:
+        """Serialize tool calls to JSON for structured checking by ToolCallJudge.
+
+        Returns:
+            A JSON array of ``{"name": ..., "arguments": {...}}`` objects.
+        """
+        return json.dumps(
+            [{"name": c.name, "arguments": c.arguments} for c in self.tool_calls]
+        )
 
 
 class TargetError(Exception):
