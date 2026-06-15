@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-15
+
 ### Added
 - **`langgraph-server` adapter** — red-team a LangGraph agent running as an HTTP server
   (`langgraph dev` / LangGraph Platform) over `langgraph_sdk`, without installing
