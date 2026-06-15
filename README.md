@@ -157,6 +157,30 @@ aion-redteam run --target examples/ollama_langgraph_agent.py --adapter langgraph
 > standalone Python on your `PATH` is colliding with another OpenSSL DLL. Build the venv on
 > a system/Anaconda Python instead: `uv venv aion-redteam --python C:\path\to\python.exe`.
 
+### Testing a LangGraph server (HTTP)
+
+If your agent runs as a **server** (e.g. `langgraph dev` at `http://127.0.0.1:2024`, or a
+deployed LangGraph Platform graph) rather than an importable file, use the
+`langgraph-server` adapter. It talks to the running server over HTTP, so aion-redteam does
+**not** need to be installed in your agent's environment.
+
+```bash
+pip install "aion-redteam[langgraph-server]"
+
+# Start your agent's server in its own project:  langgraph dev
+aion-redteam run --adapter langgraph-server \
+  --base-url http://127.0.0.1:2024 \
+  --assistant agent \
+  --html report.html
+```
+
+`--base-url` defaults to `http://127.0.0.1:2024` and `--assistant` to `agent` (the graph
+name from your `langgraph.json`), so a standard local server is just
+`aion-redteam run --adapter langgraph-server`. For a hosted/authenticated server, add
+`--api-key <key>`. The adapter discovers the server's available graphs and lists them if
+the requested assistant isn't found. For slow, multi-step agents, raise the budget with
+`--timeout` / `--num-runs`.
+
 ## How it works
 
 For every scenario, the runner drives your agent through a fixed lifecycle, repeated
