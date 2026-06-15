@@ -8,6 +8,11 @@ from aion_redteam.core.target import Target, TargetError
 # core package has no hard dependency on any framework.
 _ADAPTERS: dict[str, tuple[str, str, str]] = {
     "langgraph": ("aion_redteam.adapters.langgraph", "LangGraphTarget", "langgraph"),
+    "langgraph-server": (
+        "aion_redteam.adapters.langgraph_server",
+        "LangGraphServerTarget",
+        "langgraph-server",
+    ),
 }
 
 

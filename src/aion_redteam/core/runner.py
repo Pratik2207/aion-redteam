@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Callable
 
 from aion_redteam.core.judge import get_judge
 from aion_redteam.core.result import (
@@ -77,18 +78,34 @@ class Runner:
         return self.num_runs_override or scenario.execution.num_runs
 
     async def run(
-        self, target_name: str = "agent", adapter: str = "unknown"
+        self,
+        target_name: str = "agent",
+        adapter: str = "unknown",
+        on_scenario_start: Callable[[Scenario, int, int], None] | None = None,
+        on_scenario_end: Callable[[ScenarioResult, int, int], None] | None = None,
     ) -> RunResult:
         """Execute every scenario and aggregate the results.
 
         Args:
             target_name: Display name of the target for the report.
             adapter: Name of the adapter used (e.g. ``"langgraph"``).
+            on_scenario_start: Optional callback ``(scenario, index, total)`` invoked
+                before each scenario runs — used by the CLI for live progress.
+            on_scenario_end: Optional callback ``(result, index, total)`` invoked after
+                each scenario completes.
 
         Returns:
             The aggregated :class:`RunResult`.
         """
-        results = [await self._run_scenario(s) for s in self.scenarios]
+        total = len(self.scenarios)
+        results: list[ScenarioResult] = []
+        for index, scenario in enumerate(self.scenarios, start=1):
+            if on_scenario_start is not None:
+                on_scenario_start(scenario, index, total)
+            result = await self._run_scenario(scenario)
+            results.append(result)
+            if on_scenario_end is not None:
+                on_scenario_end(result, index, total)
         return self._aggregate(results, target_name, adapter)
 
     async def _run_scenario(self, scenario: Scenario) -> ScenarioResult:
@@ -111,6 +128,14 @@ class Runner:
             run_details=details,
             duration_ms=duration_ms,
             mitigations=scenario.mitigations,
+            description=scenario.description,
+            difficulty=scenario.difficulty.value,
+            tags=scenario.tags,
+            injection_point=scenario.attack.injection_point.value,
+            attack_payload=scenario.attack.payload,
+            criteria_descriptions=[c.describe() for c in scenario.success_criteria.criteria],
+            combine_mode=scenario.success_criteria.mode.value,
+            references=scenario.references,
         )
 
     async def _run_once(self, scenario: Scenario, run_index: int) -> SingleRunDetail:

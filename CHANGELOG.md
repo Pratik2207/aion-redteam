@@ -7,6 +7,17 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **`langgraph-server` adapter** — red-team a LangGraph agent running as an HTTP server
+  (`langgraph dev` / LangGraph Platform) over `langgraph_sdk`, without installing
+  aion-redteam in the agent's environment. Discovers the server's assistants/graphs and
+  runs each scenario in a fresh thread. New CLI flags: `--base-url`, `--assistant`,
+  `--api-key`. Ships as the `langgraph-server` extra.
+- **Live progress** — `run` now streams each scenario verdict as it completes with a
+  progress spinner, instead of appearing frozen during long scans.
+- **PDF report** (`PDFReporter`, `pdf` extra) — `run --pdf` / `report --format pdf`.
+- **Detailed reports** — HTML and PDF now show, per scenario: description, injection
+  point, the attack payload, success criteria (with which matched), the agent's actual
+  response (evidence), mitigations, and references.
 - `ToolCallJudge` (`tool_call_check` criteria) — assert that an agent invoked a specific
   tool, optionally with given argument substrings. Tool calls are serialized to JSON for
   structured matching. Makes tool-using agents properly testable.

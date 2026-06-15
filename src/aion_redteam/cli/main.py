@@ -17,11 +17,24 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.table import Table
 
 from aion_redteam import __version__
 from aion_redteam.adapters import available_adapters, get_adapter
-from aion_redteam.core.report import HTMLReporter, JSONReporter, TerminalReporter
+from aion_redteam.core.report import (
+    HTMLReporter,
+    JSONReporter,
+    PDFReporter,
+    TerminalReporter,
+)
 from aion_redteam.core.result import RunResult
 from aion_redteam.core.runner import Runner
 from aion_redteam.core.scenario import (
@@ -166,8 +179,24 @@ def validate(
 
 @app.command("run")
 def run(
-    target: Path = typer.Option(..., "--target", help="Path to the agent file."),
-    adapter: str = typer.Option("langgraph", "--adapter", help="Framework adapter."),
+    target: str | None = typer.Option(
+        None, "--target", help="Path to the agent file (for in-process adapters)."
+    ),
+    adapter: str = typer.Option(
+        "langgraph", "--adapter",
+        help="Framework adapter: langgraph (in-process) or langgraph-server (HTTP).",
+    ),
+    base_url: str | None = typer.Option(
+        None, "--base-url",
+        help="LangGraph Server URL for the langgraph-server adapter "
+        "(default http://127.0.0.1:2024).",
+    ),
+    assistant: str | None = typer.Option(
+        None, "--assistant", help="Assistant/graph id on the server (default 'agent')."
+    ),
+    api_key: str | None = typer.Option(
+        None, "--api-key", help="API key for an authenticated LangGraph server."
+    ),
     scenarios: Path | None = typer.Option(
         None, "--scenarios", help="Scenario directory (defaults to bundled set)."
     ),
@@ -192,6 +221,9 @@ def run(
     json_out: Path | None = typer.Option(
         None, "--json", help="Also write a JSON report to this path."
     ),
+    pdf_out: Path | None = typer.Option(
+        None, "--pdf", help="Also write a detailed PDF report to this path."
+    ),
 ) -> None:
     """Run scenarios against a real agent target."""
     if adapter not in available_adapters():
@@ -201,6 +233,14 @@ def run(
         )
         raise typer.Exit(code=2)
 
+    try:
+        config, display_name = _build_target_config(
+            adapter, target, attribute, base_url, assistant, api_key
+        )
+    except ValueError as exc:
+        err_console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=2) from exc
+
     selected = _filter_scenarios(
         _load_scenarios(scenarios), category, severity, scenario_id
     )
@@ -208,15 +248,43 @@ def run(
         err_console.print("[yellow]No scenarios match the given filters.[/yellow]")
         raise typer.Exit(code=1)
 
+    reporter = TerminalReporter(console)
+    reporter.print_intro(display_name, adapter, len(selected))
+    prev_category = None
+
     try:
-        result = asyncio.run(
-            _execute(target, adapter, attribute, selected, timeout, num_runs)
-        )
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TimeElapsedColumn(),
+            console=console,
+            transient=True,
+        ) as progress:
+            task = progress.add_task("starting…", total=len(selected))
+
+            def on_start(scenario, index, total):  # noqa: ANN001, ANN202
+                progress.update(task, description=f"running [bold]{scenario.id}[/bold]")
+
+            def on_end(result_, index, total):  # noqa: ANN001, ANN202
+                nonlocal prev_category
+                reporter.print_scenario(result_, prev_category)
+                prev_category = result_.owasp_category
+                progress.advance(task)
+
+            result = asyncio.run(
+                _execute(
+                    config, adapter, display_name, selected, timeout, num_runs,
+                    on_scenario_start=on_start, on_scenario_end=on_end,
+                )
+            )
     except TargetError as exc:
         err_console.print(f"[red]Target error[/red] {exc}")
         raise typer.Exit(code=2) from exc
 
-    TerminalReporter(console).render(result)
+    console.print()
+    reporter.print_summary(result)
     _save_json(result, _LAST_RUN, announce=False)
     if json_out:
         JSONReporter().write(result, json_out)
@@ -224,6 +292,9 @@ def run(
     if html_out:
         HTMLReporter().write(result, html_out)
         console.print(f"HTML report: {html_out}")
+    if pdf_out:
+        PDFReporter().write(result, pdf_out)
+        console.print(f"PDF report: {pdf_out}")
 
     # Exit non-zero when the agent is vulnerable, so CI gates on findings.
     if result.failed or result.flaky:
@@ -250,8 +321,13 @@ def report(
     elif fmt == "html":
         out = output or Path("redteam-report.html")
         HTMLReporter().write(result, out)
+    elif fmt == "pdf":
+        out = output or Path("redteam-report.pdf")
+        PDFReporter().write(result, out)
     else:
-        err_console.print(f"[red]Unknown format[/red] {fmt!r}. Use 'html' or 'json'.")
+        err_console.print(
+            f"[red]Unknown format[/red] {fmt!r}. Use 'html', 'pdf', or 'json'."
+        )
         raise typer.Exit(code=2)
     console.print(f"Report written: {out}")
 
@@ -284,24 +360,62 @@ def init(
 # -- helpers -----------------------------------------------------------------------
 
 
-async def _execute(
-    target: Path,
+def _build_target_config(
     adapter: str,
+    target: str | None,
     attribute: str | None,
+    base_url: str | None,
+    assistant: str | None,
+    api_key: str | None,
+) -> tuple[dict[str, object], str]:
+    """Build the adapter load-config and a display name, validating required args.
+
+    Returns:
+        ``(config, display_name)``.
+
+    Raises:
+        ValueError: If required arguments for the chosen adapter are missing.
+    """
+    if adapter == "langgraph-server":
+        url = base_url or "http://127.0.0.1:2024"
+        config: dict[str, object] = {"base_url": url, "assistant": assistant or "agent"}
+        if api_key:
+            config["api_key"] = api_key
+        return config, f"{url} ({config['assistant']})"
+
+    # File-based (in-process) adapters.
+    if not target:
+        raise ValueError(
+            f"adapter {adapter!r} requires --target (path to the agent file)."
+        )
+    config = {"target": target}
+    if attribute:
+        config["attribute"] = attribute
+    return config, Path(target).name
+
+
+async def _execute(
+    config: dict[str, object],
+    adapter: str,
+    display_name: str,
     scenarios: list[Scenario],
     timeout: float | None = None,
     num_runs: int | None = None,
+    on_scenario_start=None,  # noqa: ANN001
+    on_scenario_end=None,  # noqa: ANN001
 ) -> RunResult:
     """Load the adapter + target and run the selected scenarios."""
     tgt = get_adapter(adapter)
-    config: dict[str, object] = {"target": str(target)}
-    if attribute:
-        config["attribute"] = attribute
     await tgt.load(config)
     runner = Runner(
         tgt, scenarios, timeout_override=timeout, num_runs_override=num_runs
     )
-    return await runner.run(target_name=target.name, adapter=adapter)
+    return await runner.run(
+        target_name=display_name,
+        adapter=adapter,
+        on_scenario_start=on_scenario_start,
+        on_scenario_end=on_scenario_end,
+    )
 
 
 def _save_json(result: RunResult, path: Path, announce: bool) -> None:

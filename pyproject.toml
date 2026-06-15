@@ -40,10 +40,12 @@ dependencies = [
 
 [project.optional-dependencies]
 langgraph = ["langgraph>=0.2", "langchain-core>=0.3"]
+langgraph-server = ["langgraph-sdk>=0.1"]
 ollama = ["langchain-ollama>=0.2"]
 crewai = ["crewai>=0.80"]
 mcp = ["mcp>=1.0"]
 llm-judge = ["anthropic>=0.40"]
+pdf = ["fpdf2>=2.7"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",

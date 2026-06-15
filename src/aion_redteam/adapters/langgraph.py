@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from aion_redteam.adapters._injection import fold_injection
 from aion_redteam.core.scenario import InjectionPoint, Setup
 from aion_redteam.core.target import Target, TargetError, TargetResponse, ToolCall
 
@@ -25,14 +26,6 @@ from aion_redteam.core.target import Target, TargetError, TargetResponse, ToolCa
 _GRAPH_CANDIDATES = ("graph", "app", "agent", "workflow")
 # Factory function names searched (in order); each is called with no arguments.
 _FACTORY_CANDIDATES = ("build_graph", "make_graph", "get_graph", "build_agent")
-
-# How each injection point is woven into the message the agent sees.
-_CHANNEL_LABELS: dict[InjectionPoint, str] = {
-    InjectionPoint.TOOL_OUTPUT: "Tool output",
-    InjectionPoint.RAG_DOCUMENT: "Retrieved document",
-    InjectionPoint.MEMORY: "Recalled memory",
-    InjectionPoint.INTER_AGENT_MESSAGE: "Message from peer agent",
-}
 
 
 class LangGraphTarget(Target):
@@ -109,19 +102,9 @@ class LangGraphTarget(Target):
         """Construct the langchain message list, folding in the staged injection."""
         from langchain_core.messages import HumanMessage, SystemMessage
 
-        system_text = self._system_prompt
-        user_text = input_message
-
-        if self._injection is not None:
-            payload, point = self._injection
-            if point == InjectionPoint.SYSTEM_PROMPT:
-                system_text = payload
-            elif point == InjectionPoint.USER_MESSAGE:
-                user_text = f"{input_message}\n\n{payload}"
-            else:
-                label = _CHANNEL_LABELS.get(point, "Context")
-                user_text = f"{input_message}\n\n[{label}]:\n{payload}"
-
+        system_text, user_text = fold_injection(
+            input_message, self._injection, self._system_prompt
+        )
         messages: list[Any] = []
         if system_text:
             messages.append(SystemMessage(content=system_text))

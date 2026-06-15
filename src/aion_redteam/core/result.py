@@ -12,7 +12,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from aion_redteam.core.scenario import OwaspCategory, Severity
+from aion_redteam.core.scenario import OwaspCategory, Reference, Severity
 
 
 class Verdict(enum.StrEnum):
@@ -50,6 +50,28 @@ class ScenarioResult(BaseModel):
     run_details: list[SingleRunDetail] = Field(default_factory=list)
     duration_ms: int = 0
     mitigations: list[str] = Field(default_factory=list)
+
+    # Attack detail, for richer reports.
+    description: str = ""
+    difficulty: str = ""
+    tags: list[str] = Field(default_factory=list)
+    injection_point: str = ""
+    attack_payload: str = ""
+    criteria_descriptions: list[str] = Field(default_factory=list)
+    combine_mode: str = "any"
+    references: list[Reference] = Field(default_factory=list)
+
+    @property
+    def evidence_run(self) -> SingleRunDetail | None:
+        """A representative run for the report: the first where the attack succeeded,
+        else the first errored/timed-out run, else the first run."""
+        for r in self.run_details:
+            if r.attack_succeeded:
+                return r
+        for r in self.run_details:
+            if r.error or r.timed_out:
+                return r
+        return self.run_details[0] if self.run_details else None
 
     @property
     def success_count(self) -> int:

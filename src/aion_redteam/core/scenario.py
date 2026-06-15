@@ -132,6 +132,21 @@ class Criterion(StrictModel):
     # tool_call_check
     arguments: dict[str, str] | None = None
 
+    def describe(self) -> str:
+        """Return a short human-readable description of this criterion for reports."""
+        where = self.target.value
+        if self.type == CriterionType.STRING_MATCH:
+            return f'{where} contains "{self.value}"'
+        if self.type == CriterionType.REGEX:
+            flags = f" ({', '.join(self.flags)})" if self.flags else ""
+            return f"{where} matches /{self.pattern}/{flags}"
+        if self.type == CriterionType.TOOL_CALL_CHECK:
+            args = f" with args {self.arguments}" if self.arguments else ""
+            return f"agent called tool '{self.value}'{args}"
+        if self.type == CriterionType.LLM_JUDGE:
+            return f"LLM judge: {self.prompt}"
+        return self.type.value
+
     @model_validator(mode="after")
     def _check_required_for_type(self) -> Criterion:
         """Ensure the fields required by this criterion's type are present."""
