@@ -6,6 +6,8 @@
 
 **An OWASP-aligned adversarial red-team harness for LangGraph agents.**
 
+Built by Pratik Sonawane as an independent researcher.
+
 [![PyPI](https://img.shields.io/pypi/v/aion-redteam.svg)](https://pypi.org/project/aion-redteam/)
 [![CI](https://github.com/Cypharia/aion-redteam/actions/workflows/ci.yaml/badge.svg)](https://github.com/Cypharia/aion-redteam/actions/workflows/ci.yaml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
